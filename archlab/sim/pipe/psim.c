@@ -810,8 +810,8 @@ void sim_log(const char *format, ...) {
  **********************/
 
 /* Hack for SunOS */
-extern int matherr();
-int *tclDummyMathPtr = (int *) matherr;
+//extern int matherr();
+//int *tclDummyMathPtr = (int *) matherr;
 
 static char tcl_msg[256];
 
@@ -857,15 +857,15 @@ int simResetCmd(ClientData clientData, Tcl_Interp *interp,
 {
     sim_interp = interp;
     if (argc != 1) {
-    interp->result = "No arguments allowed";
-    return TCL_ERROR;
+        Tcl_SetResult(interp, "No arguments allowed", TCL_STATIC);
+        return TCL_ERROR;
     }
     sim_reset();
     if (post_load_mem) {
-    free_mem(mem);
-    mem = copy_mem(post_load_mem);
+        free_mem(mem);
+        mem = copy_mem(post_load_mem);
     }
-    interp->result = stat_name(STAT_AOK);
+    Tcl_SetResult(interp, stat_name(STAT_AOK), TCL_STATIC);
     return TCL_OK;
 }
 
@@ -876,20 +876,20 @@ int simLoadCodeCmd(ClientData clientData, Tcl_Interp *interp,
     word_t code_count;
     sim_interp = interp;
     if (argc != 2) {
-    interp->result = "One argument required";
-    return TCL_ERROR;
+        Tcl_SetResult(interp, "One argument required", TCL_STATIC);
+        return TCL_ERROR;
     }
     code_file = fopen(argv[1], "r");
     if (!code_file) {
-    sprintf(tcl_msg, "Couldn't open code file '%s'", argv[1]);
-    interp->result = tcl_msg;
-    return TCL_ERROR;
+        sprintf(tcl_msg, "Couldn't open code file '%s'", argv[1]);
+        Tcl_SetResult(interp, tcl_msg, TCL_STATIC);
+        return TCL_ERROR;
     }
     sim_reset();
     code_count = load_mem(mem, code_file, 0);
     post_load_mem = copy_mem(mem);
     sprintf(tcl_msg, "%lld", code_count);
-    interp->result = tcl_msg;
+    Tcl_SetResult(interp, tcl_msg, TCL_STATIC);
     fclose(code_file);
     return TCL_OK;
 }
@@ -899,23 +899,22 @@ int simLoadDataCmd(ClientData clientData, Tcl_Interp *interp,
 {
     FILE *data_file;
     word_t word_count = 0;
-    interp->result = "Not implemented";
+    Tcl_SetResult(interp, "Not implemented", TCL_STATIC);
     return TCL_ERROR;
-
 
     sim_interp = interp;
     if (argc != 2) {
-    interp->result = "One argument required";
-    return TCL_ERROR;
+        Tcl_SetResult(interp, "One argument required", TCL_STATIC);
+        return TCL_ERROR;
     }
     data_file = fopen(argv[1], "r");
     if (!data_file) {
-    sprintf(tcl_msg, "Couldn't open data file '%s'", argv[1]);
-    interp->result = tcl_msg;
-    return TCL_ERROR;
+        sprintf(tcl_msg, "Couldn't open data file '%s'", argv[1]);
+        Tcl_SetResult(interp, tcl_msg, TCL_STATIC);
+        return TCL_ERROR;
     }
     sprintf(tcl_msg, "%lld", word_count);
-    interp->result = tcl_msg;
+    Tcl_SetResult(interp, tcl_msg, TCL_STATIC);
     fclose(data_file);
     return TCL_OK;
 }
@@ -929,18 +928,18 @@ int simRunCmd(ClientData clientData, Tcl_Interp *interp,
     cc_t cc;
     sim_interp = interp;
     if (argc > 2) {
-    interp->result = "At most one argument allowed";
-    return TCL_ERROR;
+        Tcl_SetResult(interp, "At most one argument allowed", TCL_STATIC);
+        return TCL_ERROR;
     }
     if (argc >= 2 &&
-    (sscanf(argv[1], "%lld", &cycle_limit) != 1 ||
-     cycle_limit < 0)) {
-    sprintf(tcl_msg, "Cannot run for '%s' cycles!", argv[1]);
-    interp->result = tcl_msg;
-    return TCL_ERROR;
+        (sscanf(argv[1], "%lld", &cycle_limit) != 1 ||
+         cycle_limit < 0)) {
+        sprintf(tcl_msg, "Cannot run for '%s' cycles!", argv[1]);
+        Tcl_SetResult(interp, tcl_msg, TCL_STATIC);
+        return TCL_ERROR;
     }
     sim_run_pipe(cycle_limit + 5, cycle_limit, &status, &cc);
-    interp->result = stat_name(status);
+    Tcl_SetResult(interp, stat_name(status), TCL_STATIC);
     return TCL_OK;
 }
 
@@ -949,20 +948,20 @@ int simModeCmd(ClientData clientData, Tcl_Interp *interp,
 {
     sim_interp = interp;
     if (argc != 2) {
-    interp->result = "One argument required";
-    return TCL_ERROR;
+        Tcl_SetResult(interp, "One argument required", TCL_STATIC);
+        return TCL_ERROR;
     }
-    interp->result = argv[1];
+    Tcl_SetResult(interp, argv[1], TCL_STATIC);
     if (strcmp(argv[1], "wedged") == 0)
-    sim_mode = S_WEDGED;
+        sim_mode = S_WEDGED;
     else if (strcmp(argv[1], "stall") == 0)
-    sim_mode = S_STALL;
+        sim_mode = S_STALL;
     else if (strcmp(argv[1], "forward") == 0)
-    sim_mode = S_FORWARD;
+        sim_mode = S_FORWARD;
     else {
-    sprintf(tcl_msg, "Unknown mode '%s'", argv[1]);
-    interp->result = tcl_msg;
-    return TCL_ERROR;
+        sprintf(tcl_msg, "Unknown mode '%s'", argv[1]);
+        Tcl_SetResult(interp, tcl_msg, TCL_STATIC);
+        return TCL_ERROR;
     }
     return TCL_OK;
 }
@@ -998,7 +997,7 @@ void signal_register_update(reg_id_t r, word_t val) {
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to signal register set\n");
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1009,7 +1008,7 @@ void create_memory_display() {
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Command '%s' failed\n", tcl_msg);
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     } else {
     word_t i;
     for (i = 0; i < memCnt && code == TCL_OK; i+=8) {
@@ -1024,7 +1023,7 @@ void create_memory_display() {
     }
     if (code != TCL_OK) {
         fprintf(stderr, "Couldn't set memory value\n");
-        fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+        fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
     }
 }
@@ -1059,7 +1058,7 @@ void set_memory(word_t addr, word_t val) {
     if (code != TCL_OK) {
         fprintf(stderr, "Couldn't set memory value 0x%llx to 0x%llx\n",
             addr, val);
-        fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+        fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
     }
 }
@@ -1073,7 +1072,7 @@ void show_cc(cc_t cc)
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to display condition codes\n");
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1085,7 +1084,7 @@ void show_stat(stat_t stat)
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to display status\n");
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1100,7 +1099,7 @@ void show_cpi() {
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to display CPI\n");
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1114,7 +1113,7 @@ void signal_sources() {
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to signal forwarding sources\n");
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1124,7 +1123,7 @@ void signal_register_clear() {
     code = Tcl_Eval(sim_interp, "clearReg");
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to signal register clear\n");
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1138,7 +1137,7 @@ void report_line(word_t line_no, word_t addr, char *hex, char *text) {
     code = Tcl_Eval(sim_interp, tcl_msg);
     if (code != TCL_OK) {
     fprintf(stderr, "Failed to report code line 0x%llx\n", addr);
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1194,7 +1193,7 @@ void report_pc(unsigned fpc, unsigned char fpcv,
     status = Tcl_Eval(sim_interp, Tcl_DStringValue(&cmd));
     if (status != TCL_OK) {
     fprintf(stderr, "Failed to report pipe code '%s'\n", code);
-    fprintf(stderr, "Error Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "Error Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
@@ -1208,7 +1207,7 @@ void report_state(char *id, word_t current, char *txt)
     fprintf(stderr, "Failed to report pipe status\n");
     fprintf(stderr, "\tStage %s.%s, status '%s'\n",
         id, current ? "current" : "next", txt);
-    fprintf(stderr, "\tError Message was '%s'\n", sim_interp->result);
+    fprintf(stderr, "\tError Message was '%s'\n", Tcl_GetStringResult(sim_interp));
     }
 }
 
