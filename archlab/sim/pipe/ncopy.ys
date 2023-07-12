@@ -15,29 +15,172 @@ ncopy:
 
 ##################################################################
 # You can modify this portion
-	# Loop header
-	xorq %rax,%rax		# count = 0;
-	andq %rdx,%rdx		# len <= 0?
-	jle Done		# if so, goto Done:
+    # Loop header
+    xorq %rax,%rax          # count = 0;
+    iaddq $-10,%rdx         # len -= 10
+    jle Remain              # if len <= 10, goto Remain:
 
-Loop:	mrmovq (%rdi), %r10	# read val from src...
-	rmmovq %r10, (%rsi)	# ...and store it to dst
-	andq %r10, %r10		# val <= 0?
-	jle Npos		# if so, goto Npos:
-	irmovq $1, %r10
-	addq %r10, %rax		# count++
-Npos:	irmovq $1, %r10
-	subq %r10, %rdx		# len--
-	irmovq $8, %r10
-	addq %r10, %rdi		# src++
-	addq %r10, %rsi		# dst++
-	andq %rdx,%rdx		# len > 0?
-	jg Loop			# if so, goto Loop:
+InLoop0:
+    mrmovq (%rdi),%rcx      # read val
+    mrmovq 8(%rdi),%r8      # read val
+    mrmovq 16(%rdi),%r9     # read val
+    mrmovq 24(%rdi),%r10    # read val
+    mrmovq 32(%rdi),%r11    # read val
+    rmmovq %rcx,(%rsi)      # store it to dst
+    rmmovq %r8,8(%rsi)      # store it to dst
+    rmmovq %r10,24(%rsi)    # store to dst
+    rmmovq %r9,16(%rsi)     # store to dst
+    rmmovq %r11,32(%rsi)    # store to dst
+    andq %rcx,%rcx          # val <= 0?
+    jle InLoop1
+    iaddq $1,%rax           # count++
+                            # loop for 10 times
+InLoop1:
+    andq %r8,%r8            # val <= 0?
+    jle InLoop2
+    iaddq $1,%rax           # count++
+InLoop2:
+    andq %r9,%r9            # val <= 0?
+    jle InLoop3
+    iaddq $1,%rax           # count++
+InLoop3:
+    andq %r10,%r10          # val <= 0?
+    jle InLoop4
+    iaddq $1,%rax           # count++
+InLoop4:
+    andq %r11,%r11          # val <= 0?
+    jle InLoop5
+    iaddq $1,%rax           # count++
+InLoop5:
+    mrmovq 40(%rdi),%rcx    # read val
+    mrmovq 48(%rdi),%r8     # read val
+    mrmovq 56(%rdi),%r9     # read val
+    mrmovq 64(%rdi),%r10    # read val
+    mrmovq 72(%rdi),%r11    # read val
+    rmmovq %rcx,40(%rsi)    # store to dst
+    rmmovq %r8,48(%rsi)     # store to dst
+    rmmovq %r9,56(%rsi)     # store to dst
+    rmmovq %r10,64(%rsi)    # store to dst
+    rmmovq %r11,72(%rsi)    # store to dst
+    andq %rcx,%rcx          # val <= 0?
+    jle InLoop6
+    iaddq $1,%rax           # count++
+InLoop6:
+    andq %r8,%r8            # val <= 0?
+    jle InLoop7
+    iaddq $1,%rax           # count++
+InLoop7:
+    andq %r9,%r9            # val <= 0?
+    jle InLoop8
+    iaddq $1,%rax           # count++
+InLoop8:
+    andq %r10,%r10          # val <= 0?
+    jle InLoop9
+    iaddq $1,%rax           # count++
+InLoop9:
+    andq %r11,%r11          # val <= 0?
+    jle InLoopF
+    iaddq $1,%rax           # count++
+InLoopF:
+    iaddq $80,%rdi
+    iaddq $80,%rsi
+    iaddq $-10,%rdx
+    jg InLoop0
+
+Remain:
+    addq %rdx,%rdx          # len *= 8;
+    addq %rdx,%rdx
+    addq %rdx,%rdx
+    mrmovq JTEnd(%rdx),%rdx # use a jumptable to deal with the remaining operations
+    pushq %rdx              # jmp *(JTEND + 8*(len0 - 10))
+    ret
+
+JT10:
+    mrmovq 72(%rdi),%r10
+    rmmovq %r10,72(%rsi)
+    andq %r10,%r10
+    jle JT9
+    iaddq $1,%rax
+JT9:
+    mrmovq 64(%rdi),%r10
+    rmmovq %r10,64(%rsi)
+    andq %r10,%r10
+    jle JT8
+    iaddq $1,%rax
+JT8:
+    mrmovq 56(%rdi),%r10
+    rmmovq %r10,56(%rsi)
+    andq %r10,%r10
+    jle JT7
+    iaddq $1,%rax
+JT7:
+    mrmovq 48(%rdi),%r10
+    rmmovq %r10,48(%rsi)
+    andq %r10,%r10
+    jle JT6
+    iaddq $1,%rax
+JT6:
+    mrmovq 40(%rdi),%r10
+    rmmovq %r10,40(%rsi)
+    andq %r10,%r10
+    jle JT5
+    iaddq $1,%rax
+JT5:
+    mrmovq 32(%rdi),%r10
+    rmmovq %r10,32(%rsi)
+    andq %r10,%r10
+    jle JT4
+    iaddq $1,%rax
+JT4:
+    mrmovq 24(%rdi),%r10
+    rmmovq %r10,24(%rsi)
+    andq %r10,%r10
+    jle JT3
+    iaddq $1,%rax
+JT3:
+    mrmovq 16(%rdi),%r10
+    rmmovq %r10,16(%rsi)
+    andq %r10,%r10
+    jle JT2
+    iaddq $1,%rax
+JT2:
+    mrmovq 8(%rdi),%r10
+    rmmovq %r10,8(%rsi)
+    andq %r10,%r10
+    jle JT1
+    iaddq $1,%rax
+JT1:
+    mrmovq (%rdi),%r10
+    rmmovq %r10,(%rsi)
+    andq %r10,%r10
+    jle Done
+    iaddq $1,%rax
+JT0:
+    jmp Done
+
 ##################################################################
 # Do not modify the following section of code
 # Function epilogue.
 Done:
 	ret
+
+##################################################################
+# Jump Table
+	#.align 8
+JTStart:
+    .quad   JT0
+    .quad	JT1
+    .quad	JT2
+    .quad	JT3
+    .quad	JT4
+    .quad	JT5
+    .quad	JT6
+    .quad	JT7
+    .quad	JT8
+    .quad	JT9
+JTEnd:
+    .quad	JT10
+
 ##################################################################
 # Keep the following label at the end of your function
 End:
