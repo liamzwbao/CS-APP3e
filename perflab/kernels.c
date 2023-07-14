@@ -47,7 +47,48 @@ void naive_rotate(int dim, pixel *src, pixel *dst)
 char rotate_descr[] = "rotate: Current working version";
 void rotate(int dim, pixel *src, pixel *dst) 
 {
-    naive_rotate(dim, src, dst);
+    int i, j, k, r, c, d, s;
+    int w = 16;
+    for (i = 0; i < dim; i += w) {
+        for (j = 0; j < dim; j += w) {
+            r = dim - 1 - j;
+            c = j;
+            for (k = i; k < i + w; k++) {
+                d = RIDX(r, k, dim), s = RIDX(k, c, dim);
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+            }
+        }
+    }
 }
 
 /*********************************************************************
