@@ -10,10 +10,10 @@
  * Please fill in the following team struct 
  */
 team_t team = {
-    "bovik",              /* Team name */
+    "Alpaca",              /* Team name */
 
-    "Harry Q. Bovik",     /* First member full name */
-    "bovik@nowhere.edu",  /* First member email address */
+    "Liam Bao",     /* First member full name */
+    "bao.zhiw@northeastern.edu",  /* First member email address */
 
     "",                   /* Second member full name (leave blank if none) */
     ""                    /* Second member email addr (leave blank if none) */
@@ -47,7 +47,48 @@ void naive_rotate(int dim, pixel *src, pixel *dst)
 char rotate_descr[] = "rotate: Current working version";
 void rotate(int dim, pixel *src, pixel *dst) 
 {
-    naive_rotate(dim, src, dst);
+    int i, j, k, r, c, d, s;
+    int w = 16;
+    for (i = 0; i < dim; i += w) {
+        for (j = 0; j < dim; j += w) {
+            r = dim - 1 - j;
+            c = j;
+            for (k = i; k < i + w; k++) {
+                d = RIDX(r, k, dim), s = RIDX(k, c, dim);
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+                d -= dim, s++;
+                dst[d] = src[s];
+            }
+        }
+    }
 }
 
 /*********************************************************************
@@ -139,6 +180,46 @@ static pixel avg(int dim, int i, int j, pixel *src)
     return current_pixel;
 }
 
+void smooth_corner(pixel *src, pixel *dst, int i1, int i2, int i3, int i4)
+{
+    dst[i1].red = (src[i1].red + src[i2].red + src[i3].red + src[i4].red) >> 2;
+    dst[i1].green = (src[i1].green + src[i2].green + src[i3].green + src[i4].green) >> 2;
+    dst[i1].blue = (src[i1].blue + src[i2].blue + src[i3].blue + src[i4].blue) >> 2;
+}
+
+void smooth_edge(pixel *src, pixel *dst, int i1, int i2, int i3, int i4, int i5, int i6, int end, int step)
+{
+    while (i1 < end) {
+        dst[i1].red = (src[i1].red + src[i2].red + src[i3].red +
+                       src[i4].red + src[i5].red + src[i6].red) / 6;
+        dst[i1].green = (src[i1].green + src[i2].green + src[i3].green +
+                         src[i4].green + src[i5].green + src[i6].green) / 6;
+        dst[i1].blue = (src[i1].blue + src[i2].blue + src[i3].blue +
+                        src[i4].blue + src[i5].blue + src[i6].blue) / 6;
+        i1 += step, i2 += step, i3 += step, i4 += step, i5 += step, i6 += step;
+    }
+}
+
+void smooth_interior(int dim, pixel *src, pixel *dst)
+{
+    int i, j, cur = dim;
+    for (i = 1; i < dim - 1; i++) {
+        for (j = 1; j < dim - 1; j++) {
+            cur++;
+            dst[cur].red = (src[cur].red + src[cur - 1].red + src[cur + 1].red +
+                            src[cur - dim].red + src[cur - dim - 1].red + src[cur - dim + 1].red +
+                            src[cur + dim].red + src[cur + dim - 1].red + src[cur + dim + 1].red) / 9;
+            dst[cur].green = (src[cur].green + src[cur - 1].green + src[cur + 1].green +
+                              src[cur - dim].green + src[cur - dim - 1].green + src[cur - dim + 1].green +
+                              src[cur + dim].green + src[cur + dim - 1].green + src[cur + dim + 1].green) / 9;
+            dst[cur].blue = (src[cur].blue + src[cur - 1].blue + src[cur + 1].blue +
+                             src[cur - dim].blue + src[cur - dim - 1].blue + src[cur - dim + 1].blue +
+                             src[cur + dim].blue + src[cur + dim - 1].blue + src[cur + dim + 1].blue) / 9;
+        }
+        cur += 2;
+    }
+}
+
 /******************************************************
  * Your different versions of the smooth kernel go here
  ******************************************************/
@@ -163,7 +244,42 @@ void naive_smooth(int dim, pixel *src, pixel *dst)
 char smooth_descr[] = "smooth: Current working version";
 void smooth(int dim, pixel *src, pixel *dst) 
 {
-    naive_smooth(dim, src, dst);
+    // Smooth four corners
+    int i1, i2, i3, i4;
+    // Top-left corner
+    i1 = 0, i2 = i1 + 1, i3 = i1 + dim, i4 = i3 + 1;
+    smooth_corner(src, dst, i1, i2, i3, i4);
+    // Top-right corner
+    i1 = dim - 1, i2 = i1 - 1, i3 = i1 + dim, i4 = i3 - 1;
+    smooth_corner(src, dst, i1, i2, i3, i4);
+    // Bottom-left corner
+    i1 *= dim, i2 = i1 + 1, i3 = i1 - dim, i4 = i3 + 1;
+    smooth_corner(src, dst, i1, i2, i3, i4);
+    // Bottom-right corner
+    i1 += dim - 1, i2 = i1 - 1, i3 = i1 - dim, i4 = i3 - 1;
+    smooth_corner(src, dst, i1, i2, i3, i4);
+
+    // Smooth four edges
+    int i5, i6, end;
+    // Top edge
+    i1 = 1, i2 = i1 - 1, i3 = i1 + 1, i4 = i1 + dim, i5 = i4 - 1, i6 = i4 + 1;
+    end = i1 + dim - 2;
+    smooth_edge(src, dst, i1, i2, i3, i4, i5, i6, end, 1);
+    // Bottom edge
+    i1 = (dim - 1) * dim + 1, i2 = i1 - 1, i3 = i1 + 1, i4 = i1 - dim, i5 = i4 - 1, i6 = i4 + 1;
+    end = i1 + dim - 2;
+    smooth_edge(src, dst, i1, i2, i3, i4, i5, i6, end, 1);
+    // Left edge
+    i1 = dim, i2 = i1 - dim, i3 = i1 + dim, i4 = i1 + 1, i5 = i4 - dim, i6 = i4 + dim;
+    end = i1 + (dim - 2) * dim;
+    smooth_edge(src, dst, i1, i2, i3, i4, i5, i6, end, dim);
+    // Right edge
+    i1 = 2 * dim - 1, i2 = i1 - dim, i3 = i1 + dim, i4 = i1 - 1, i5 = i4 - dim, i6 = i4 + dim;
+    end = i1 + (dim - 2) * dim;
+    smooth_edge(src, dst, i1, i2, i3, i4, i5, i6, end, dim);
+
+    // Interior pixels
+    smooth_interior(dim, src, dst);
 }
 
 
@@ -176,8 +292,8 @@ void smooth(int dim, pixel *src, pixel *dst)
  *********************************************************************/
 
 void register_smooth_functions() {
-    add_smooth_function(&smooth, smooth_descr);
     add_smooth_function(&naive_smooth, naive_smooth_descr);
+    add_smooth_function(&smooth, smooth_descr);
     /* ... Register additional test functions here */
 }
 
