@@ -104,6 +104,21 @@ typedef void handler_t(int);
 
 handler_t *Signal(int signum, handler_t *handler);
 
+/* Here are the helper functions for system call error handling */
+void Execve(const char *path, char *const *argv, char *const *envp);
+
+void Setpgid(pid_t pid, pid_t pgid);
+
+pid_t Fork(void);
+
+void Sigemptyset(sigset_t *set);
+
+void Sigfillset(sigset_t *set);
+
+void Sigaddset(sigset_t *set, int signum);
+
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+
 /*
  * main - The shell's main routine 
  */
@@ -182,6 +197,42 @@ int main(int argc, char **argv) {
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
 void eval(char *cmdline) {
+    char *argv[MAXARGS];                    /* Argument list execve() */
+    int bg;                                 /* Should the job run in bg or fg? */
+    pid_t pid;                              /* Process id */
+    sigset_t mask_all, mask_one, prev_one;  /* Signal set to block certain signals */
+
+    bg = parseline(cmdline, argv);
+    if (argv[0] == NULL)
+        return; /* Ignore empty lines */
+
+    Sigfillset(&mask_all);          /* Add every signal to set */
+    Sigemptyset(&mask_one);         /* Initialize signal set */
+    Sigaddset(&mask_one, SIGCHLD);  /* Add SIGCHLD to the set */
+
+    if (!builtin_cmd(argv)) {
+        Sigprocmask(SIG_BLOCK, &mask_one, &prev_one);   /* Block SIGCHILD */
+
+        if ((pid = Fork()) == 0) {  /* Child runs user job */
+            Setpgid(0, 0);                              /* Change the process group of child process */
+            Sigprocmask(SIG_SETMASK, &prev_one, NULL);  /* Unblock SIGCHILD */
+            Execve(argv[0], argv, environ);
+        }
+
+
+        /* Parent waits for foreground job to terminate */
+        if (!bg) {
+            Sigprocmask(SIG_BLOCK, &mask_all, NULL);    /* Block all signals to avoid interruption of addjob */
+            addjob(jobs, pid, FG, cmdline);
+            Sigprocmask(SIG_SETMASK, &prev_one, NULL);
+            waitfg(pid);
+        } else {
+            Sigprocmask(SIG_BLOCK, &mask_all, NULL);    /* Block all signals to avoid interruption of addjob */
+            addjob(jobs, pid, BG, cmdline);
+            printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+            Sigprocmask(SIG_SETMASK, &prev_one, NULL);
+        }
+    }
     return;
 }
 
@@ -442,10 +493,10 @@ void listjobs(struct job_t *jobs) {
         }
     }
 }
-/******************************
- * end job list helper routines
- ******************************/
 
+/******************************
+ * End job list helper routines
+ ******************************/
 
 /***********************
  * Other helper routines
@@ -502,5 +553,60 @@ void sigquit_handler(int sig) {
     exit(1);
 }
 
+/***************************
+ * End other helper routines
+ ***************************/
 
+/****************************
+ * System call error handling
+ ****************************/
 
+/* Execve - error-handling wrapper for the execve function */
+void Execve(const char *path, char *const *argv, char *const *envp) {
+    if (execve(path, argv, envp) < 0) {
+        printf("%s: Command not found\n", argv[0]);
+        exit(0);
+    }
+}
+
+/* Setpgid - error-handling wrapper for the setpgid function */
+void Setpgid(pid_t pid, pid_t pgid) {
+    if (setpgid(pid, pgid) < 0)
+        unix_error("setpgid error");
+}
+
+/* Fork - error-handling wrapper for the fork function */
+pid_t Fork(void) {
+    pid_t pid;
+    if ((pid = fork()) < 0)
+        unix_error("fork error");
+    return pid;
+}
+
+/* Sigemptyset - error-handling wrapper for the sigemptyset function */
+void Sigemptyset(sigset_t *set) {
+    if (sigemptyset(set) < 0)
+        app_error("sigemptyset error");
+}
+
+/* Sigfillset - error-handling wrapper for the sigfillset function */
+void Sigfillset(sigset_t *set) {
+    if (sigfillset(set) < 0)
+        app_error("sigfillset error");
+}
+
+/* Sigaddset - error-handling wrapper for the sigaddset function */
+void Sigaddset(sigset_t *set, int signum) {
+    if (sigaddset(set, signum) < 0)
+        app_error("sigaddset error");
+}
+
+/* Sigprocmask - error-handling wrapper for the sigprocmask function */
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+    if (sigprocmask(how, set, oldset) < 0)
+        app_error("sigprocmask error");
+}
+
+/********************************
+ * End system call error handling
+ ********************************/
