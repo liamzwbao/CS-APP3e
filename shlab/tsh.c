@@ -374,7 +374,28 @@ void waitfg(pid_t pid) {
  *     currently running children to terminate.  
  */
 void sigchld_handler(int sig) {
-    return;
+    int olderrno = errno;
+    sigset_t mask, prev;
+    pid_t pid;
+    int status;
+
+    Sigfillset(&mask);
+    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) { /* Reap a zombie child */
+        Sigprocmask(SIG_BLOCK, &mask, &prev);
+        if (WIFEXITED(status)) {
+            deletejob(jobs, pid);   /* Delete the child from the job list */
+        } else if (WIFSIGNALED(status)) {
+            deletejob(jobs, pid);
+            printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
+        } else if (WIFSTOPPED(status)) {
+            getjobpid(jobs, pid)->state = ST;    /* Change job status to ST (stopped) */
+            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, WSTOPSIG(status));
+        }
+        Sigprocmask(SIG_SETMASK, &prev, NULL);
+    }
+    if (errno != ECHILD)
+        app_error("waitpid error");
+    errno = olderrno;
 }
 
 /* 
