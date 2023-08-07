@@ -348,14 +348,11 @@ void do_bgfg(char **argv) {
  * waitfg - Block until process pid is no longer the foreground process
  */
 void waitfg(pid_t pid) {
-    sigset_t mask, prev;
+    sigset_t mask;
     Sigemptyset(&mask);
-    Sigaddset(&mask, SIGCHLD);
-    Sigprocmask(SIG_BLOCK, &mask, &prev);
-    while (fgpid(jobs) != pid) {
-        Sigsuspend(&mask);
+    while (fgpid(jobs) == pid) {
+        sigsuspend(&mask);
     }
-    Sigprocmask(SIG_SETMASK, &prev, NULL);
 }
 
 /*****************
@@ -370,14 +367,10 @@ void waitfg(pid_t pid) {
  *     currently running children to terminate.  
  */
 void sigchld_handler(int sig) {
-    int olderrno = errno;
-    sigset_t mask, prev;
     pid_t pid;
     int status;
 
-    Sigfillset(&mask);
     while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) { /* Reap a zombie child */
-        Sigprocmask(SIG_BLOCK, &mask, &prev);
         if (WIFEXITED(status)) {
             deletejob(jobs, pid);   /* Delete the child from the job list */
         } else if (WIFSIGNALED(status)) {
@@ -387,11 +380,7 @@ void sigchld_handler(int sig) {
             getjobpid(jobs, pid)->state = ST;    /* Change job status to ST (stopped) */
             printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, WSTOPSIG(status));
         }
-        Sigprocmask(SIG_SETMASK, &prev, NULL);
     }
-    if (errno != ECHILD)
-        app_error("waitpid error");
-    errno = olderrno;
 }
 
 /* 
