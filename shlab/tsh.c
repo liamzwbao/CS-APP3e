@@ -295,7 +295,17 @@ int parseline(const char *cmdline, char **argv) {
  *    it immediately.  
  */
 int builtin_cmd(char **argv) {
-    return 0;     /* not a builtin command */
+    if (!strcmp(argv[0], "quit")) { /* quit command */
+        exit(0);
+    } else if (!strcmp(argv[0], "fg") || !strcmp(argv[0], "bg")) { /* fg or bg command */
+        do_bgfg(argv);
+        return 1;
+    } else if (!strcmp(argv[0], "jobs")) { /* list jobs command */
+        listjobs(jobs);
+        return 1;
+    } else { /* not a builtin command */
+        return 0;
+    }
 }
 
 /* 
