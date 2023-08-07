@@ -399,12 +399,14 @@ void sigchld_handler(int sig) {
 }
 
 /* 
- * sigint_handler - The kernel sends a SIGINT to the shell whenver the
+ * sigint_handler - The kernel sends a SIGINT to the shell whenever the
  *    user types ctrl-c at the keyboard.  Catch it and send it along
  *    to the foreground job.  
  */
 void sigint_handler(int sig) {
-    return;
+    pid_t pid;
+    if ((pid = fgpid(jobs)) > 0)
+        Kill(-pid, sig);
 }
 
 /*
@@ -413,7 +415,9 @@ void sigint_handler(int sig) {
  *     foreground job by sending it a SIGTSTP.  
  */
 void sigtstp_handler(int sig) {
-    return;
+    pid_t pid;
+    if ((pid = fgpid(jobs)) > 0)
+        Kill(-pid, sig);
 }
 
 /*********************
