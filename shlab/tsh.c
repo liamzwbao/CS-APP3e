@@ -201,40 +201,36 @@ int main(int argc, char **argv) {
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
 void eval(char *cmdline) {
-    char *argv[MAXARGS];                    /* Argument list execve() */
-    int bg;                                 /* Should the job run in bg or fg? */
-    pid_t pid;                              /* Process id */
-    sigset_t mask_all, mask_one, prev_one;  /* Signal set to block certain signals */
+    char *argv[MAXARGS];    /* Argument list execve() */
+    int bg;                 /* Should the job run in bg or fg? */
+    pid_t pid;              /* Process id */
+    sigset_t mask;          /* Signal set to block certain signals */
 
     bg = parseline(cmdline, argv);
     if (argv[0] == NULL)
         return; /* Ignore empty lines */
 
-    Sigfillset(&mask_all);          /* Add every signal to set */
-    Sigemptyset(&mask_one);         /* Initialize signal set */
-    Sigaddset(&mask_one, SIGCHLD);  /* Add SIGCHLD to the set */
-
     if (!builtin_cmd(argv)) {
-        Sigprocmask(SIG_BLOCK, &mask_one, &prev_one);   /* Block SIGCHILD */
+        Sigemptyset(&mask);                     /* Initialize signal set */
+        Sigaddset(&mask, SIGCHLD);              /* Add SIGCHLD to the set */
+        Sigprocmask(SIG_BLOCK, &mask, NULL);    /* Block SIGCHILD */
 
         if ((pid = Fork()) == 0) {  /* Child runs user job */
             Setpgid(0, 0);                              /* Change the process group of child process */
-            Sigprocmask(SIG_SETMASK, &prev_one, NULL);  /* Unblock SIGCHILD */
+            Sigprocmask(SIG_UNBLOCK, &mask, NULL);  /* Unblock SIGCHILD */
             Execve(argv[0], argv, environ);
         }
 
 
         /* Parent waits for foreground job to terminate */
         if (!bg) {
-            Sigprocmask(SIG_BLOCK, &mask_all, NULL);    /* Block all signals to avoid interruption of addjob */
             addjob(jobs, pid, FG, cmdline);
-            Sigprocmask(SIG_SETMASK, &prev_one, NULL);
+            Sigprocmask(SIG_UNBLOCK, &mask, NULL);
             waitfg(pid);
         } else {
-            Sigprocmask(SIG_BLOCK, &mask_all, NULL);    /* Block all signals to avoid interruption of addjob */
             addjob(jobs, pid, BG, cmdline);
+            Sigprocmask(SIG_UNBLOCK, &mask, NULL);
             printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
-            Sigprocmask(SIG_SETMASK, &prev_one, NULL);
         }
     }
     return;
