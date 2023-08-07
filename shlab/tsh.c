@@ -111,6 +111,8 @@ void Setpgid(pid_t pid, pid_t pgid);
 
 pid_t Fork(void);
 
+void Kill(pid_t pid, int sig);
+
 void Sigemptyset(sigset_t *set);
 
 void Sigfillset(sigset_t *set);
@@ -312,7 +314,36 @@ int builtin_cmd(char **argv) {
  * do_bgfg - Execute the builtin bg and fg commands
  */
 void do_bgfg(char **argv) {
-    return;
+    if (argv[1] == NULL) {
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
+        return;
+    }
+
+    struct job_t *job;
+    int id;
+    if (sscanf(argv[1], "%d", &id) > 0) { /* Parse pid */
+        if ((job = getjobpid(jobs, id)) == NULL) {
+            printf("(%s): No such process\n", argv[1]);
+            return;
+        }
+    } else if (sscanf(argv[1], "%%%d", &id) > 0) { /* Parse jid */
+        if ((job = getjobjid(jobs, id)) == NULL) {
+            printf("%s: No such job\n", argv[1]);
+            return;
+        }
+    } else {
+        printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+        return;
+    }
+
+    Kill(-(job->pid), SIGCONT); /* Send SIGCONT signal to entire group of the given job */
+    if (!strcmp(argv[0], "bg")) {
+        job->state = BG;
+        printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+    } else {
+        job->state = FG;
+        waitfg(job->pid);
+    }
 }
 
 /* 
@@ -591,6 +622,12 @@ pid_t Fork(void) {
     if ((pid = fork()) < 0)
         unix_error("fork error");
     return pid;
+}
+
+/* Kill - error-handling wrapper for the kill function */
+void Kill(pid_t pid, int sig) {
+    if (kill(pid, sig) < 0)
+        app_error("kill error");
 }
 
 /* Sigemptyset - error-handling wrapper for the sigemptyset function */
