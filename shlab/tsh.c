@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <ctype.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -114,8 +113,6 @@ pid_t Fork(void);
 void Kill(pid_t pid, int sig);
 
 void Sigemptyset(sigset_t *set);
-
-void Sigfillset(sigset_t *set);
 
 void Sigaddset(sigset_t *set, int signum);
 
@@ -653,12 +650,6 @@ void Kill(pid_t pid, int sig) {
 void Sigemptyset(sigset_t *set) {
     if (sigemptyset(set) < 0)
         app_error("sigemptyset error");
-}
-
-/* Sigfillset - error-handling wrapper for the sigfillset function */
-void Sigfillset(sigset_t *set) {
-    if (sigfillset(set) < 0)
-        app_error("sigfillset error");
 }
 
 /* Sigaddset - error-handling wrapper for the sigaddset function */
