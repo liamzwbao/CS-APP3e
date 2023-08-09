@@ -118,8 +118,6 @@ void Sigaddset(sigset_t *set, int signum);
 
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 
-void Sigsuspend(const sigset_t *set);
-
 /*
  * main - The shell's main routine 
  */
@@ -348,7 +346,7 @@ void waitfg(pid_t pid) {
     sigset_t mask;
     Sigemptyset(&mask);
     while (fgpid(jobs) == pid) {
-        Sigsuspend(&mask);
+        sigsuspend(&mask);
     }
 }
 
@@ -662,12 +660,6 @@ void Sigaddset(sigset_t *set, int signum) {
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
     if (sigprocmask(how, set, oldset) < 0)
         app_error("sigprocmask error");
-}
-
-/* Sigsuspend - error-handling wrapper for the sigsuspend function */
-void Sigsuspend(const sigset_t *set) {
-    if (sigsuspend(set) < 0)
-        app_error("sigsuspend error");
 }
 
 /********************************
