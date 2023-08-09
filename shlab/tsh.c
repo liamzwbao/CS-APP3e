@@ -369,11 +369,11 @@ void sigchld_handler(int sig) {
         if (WIFEXITED(status)) {
             deletejob(jobs, pid);   /* Delete the child from the job list */
         } else if (WIFSIGNALED(status)) {
-            deletejob(jobs, pid);
             printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
+            deletejob(jobs, pid);
         } else if (WIFSTOPPED(status)) {
-            getjobpid(jobs, pid)->state = ST;    /* Change job status to ST (stopped) */
             printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, WSTOPSIG(status));
+            getjobpid(jobs, pid)->state = ST;    /* Change job status to ST (stopped) */
         }
     }
 }
