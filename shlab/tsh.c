@@ -118,6 +118,8 @@ void Sigaddset(sigset_t *set, int signum);
 
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 
+void Sigsuspend(const sigset_t *set);
+
 /*
  * main - The shell's main routine 
  */
@@ -346,7 +348,7 @@ void waitfg(pid_t pid) {
     sigset_t mask;
     Sigemptyset(&mask);
     while (fgpid(jobs) == pid) {
-        sigsuspend(&mask);
+        Sigsuspend(&mask);
     }
 }
 
@@ -641,25 +643,31 @@ pid_t Fork(void) {
 /* Kill - error-handling wrapper for the kill function */
 void Kill(pid_t pid, int sig) {
     if (kill(pid, sig) < 0)
-        app_error("kill error");
+        unix_error("kill error");
 }
 
 /* Sigemptyset - error-handling wrapper for the sigemptyset function */
 void Sigemptyset(sigset_t *set) {
     if (sigemptyset(set) < 0)
-        app_error("sigemptyset error");
+        unix_error("sigemptyset error");
 }
 
 /* Sigaddset - error-handling wrapper for the sigaddset function */
 void Sigaddset(sigset_t *set, int signum) {
     if (sigaddset(set, signum) < 0)
-        app_error("sigaddset error");
+        unix_error("sigaddset error");
 }
 
 /* Sigprocmask - error-handling wrapper for the sigprocmask function */
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
     if (sigprocmask(how, set, oldset) < 0)
-        app_error("sigprocmask error");
+        unix_error("sigprocmask error");
+}
+
+/* Sigsuspend - error-handling wrapper for the sigsuspend function */
+void Sigsuspend(const sigset_t *set) {
+    if (sigsuspend(set) != -1)
+        unix_error("sigsuspend error");
 }
 
 /********************************
