@@ -79,6 +79,8 @@ team_t team = {
 
 static char *heap_listp;
 
+static char *curr_ptr;
+
 static void *extend_heap(size_t words);
 
 static void *coalesce(void *ptr);
@@ -103,6 +105,7 @@ int mm_init(void) {
     PUT(heap_listp + (2 * WSIZE), PACK(DSIZE, 1));  /* Prologue footer */
     PUT(heap_listp + (3 * WSIZE), PACK(0, 1));      /* Epilogue header */
     heap_listp += (2 * WSIZE);
+    curr_ptr = heap_listp + DSIZE;
     CHECKHEAP(__LINE__);
 
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
@@ -217,25 +220,19 @@ static void *coalesce(void *ptr) {
         PUT(FTRP(NEXT_BLKP(ptr)), PACK(size, 0));
         ptr = PREV_BLKP(ptr);
     }
+    curr_ptr = ptr;
     CHECKHEAP(__LINE__);
     return ptr;
 }
 
 static void *find_fit(size_t asize) {
-    /* Best-fit search */
-    void *ptr;
-    size_t min_size = 0xffffffff;
-    void *ret = NULL;
-
-    for (ptr = heap_listp; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {
-        if (!GET_ALLOC(HDRP(ptr)) && (asize <= GET_SIZE(HDRP(ptr)))) {
-            if (GET_SIZE(HDRP(ptr)) < min_size) {
-                min_size = GET_SIZE(HDRP(ptr));
-                ret = ptr;
-            }
+    /* Next-fit search */
+    for (; GET_SIZE(HDRP(curr_ptr)) > 0; curr_ptr = NEXT_BLKP(curr_ptr)) {
+        if (!GET_ALLOC(HDRP(curr_ptr)) && (asize <= GET_SIZE(HDRP(curr_ptr)))) {
+            return curr_ptr;
         }
     }
-    return ret;
+    return NULL;    /* No fit */
 }
 
 static void place(void *ptr, size_t asize) {
@@ -252,6 +249,7 @@ static void place(void *ptr, size_t asize) {
         PUT(HDRP(ptr), PACK(csize, 1));
         PUT(FTRP(ptr), PACK(csize, 1));
     }
+    curr_ptr = ptr;
     CHECKHEAP(__LINE__);
 }
 
