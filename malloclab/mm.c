@@ -133,7 +133,6 @@ void *mm_malloc(size_t size) {
     /* Search the free list for a fit */
     if ((ptr = find_fit(asize)) != NULL) {
         place(ptr, asize);
-        CHECKHEAP(__LINE__);
         return ptr;
     }
 
@@ -142,7 +141,6 @@ void *mm_malloc(size_t size) {
     if ((ptr = extend_heap(extendsize / WSIZE)) == NULL)
         return NULL;
     place(ptr, asize);
-    CHECKHEAP(__LINE__);
     return ptr;
 }
 
@@ -154,7 +152,6 @@ void mm_free(void *ptr) {
     PUT(HDRP(ptr), PACK(size, 0));
     PUT(FTRP(ptr), PACK(size, 0));
     coalesce(ptr);
-    CHECKHEAP(__LINE__);
 }
 
 /*
@@ -173,7 +170,6 @@ void *mm_realloc(void *ptr, size_t size) {
         copySize = size;
     memcpy(newptr, oldptr, copySize);
     mm_free(oldptr);
-    CHECKHEAP(__LINE__);
     return newptr;
 }
 
@@ -196,7 +192,6 @@ static void *extend_heap(size_t words) {
     PUT(HDRP(NEXT_BLKP(ptr)), PACK(0, 1));   /* New epilogue header */
 
     /* Coalesce if the previous block was free */
-    CHECKHEAP(__LINE__);
     return coalesce(ptr);
 }
 
@@ -227,15 +222,20 @@ static void *coalesce(void *ptr) {
 }
 
 static void *find_fit(size_t asize) {
-    /* First-fit search */
+    /* Best-fit search */
     void *ptr;
+    size_t min_size = 0xffffffff;
+    void *ret = NULL;
 
     for (ptr = heap_listp; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {
         if (!GET_ALLOC(HDRP(ptr)) && (asize <= GET_SIZE(HDRP(ptr)))) {
-            return ptr;
+            if (GET_SIZE(HDRP(ptr)) < min_size) {
+                min_size = GET_SIZE(HDRP(ptr));
+                ret = ptr;
+            }
         }
     }
-    return NULL;    /* No fit */
+    return ret;
 }
 
 static void place(void *ptr, size_t asize) {
