@@ -1,0 +1,4 @@
+Team Name:Alpaca
+Member 1 :Liam Bao:bao.zhiw@northeastern.edu
+Using default tracefiles in ./traces/
+Perf index = 45 (util) + 19 (thru) = 64/100
