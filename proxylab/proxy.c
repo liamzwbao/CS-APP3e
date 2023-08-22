@@ -1,8 +1,13 @@
 #include "csapp.h"
+#include "sbuf.h"
 
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
+
+/* Number of threads and size of shared buffer */
+#define NTHREADS 4
+#define SBUFSIZE 16
 
 typedef struct {
     char host[MAXLINE];
@@ -16,15 +21,20 @@ void parse_uri(char *uri, uri_t *uri_info);
 
 void build_requesthdrs(rio_t *rio_client, uri_t *uri_info, char *requesthdrs);
 
+void *thread(void *vargp);
+
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 
 void sigpipe_handler(int sig);
+
+sbuf_t sbuf;    /* Shared buffer of connected descriptors */
 
 int main(int argc, char **argv) {
     int listenfd, connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
+    pthread_t tid;
 
     /* Check command line args */
     if (argc != 2) {
@@ -35,13 +45,16 @@ int main(int argc, char **argv) {
     Signal(SIGPIPE, sigpipe_handler);
     listenfd = Open_listenfd(argv[1]);
 
+    sbuf_init(&sbuf, SBUFSIZE);
+    for (int i = 0; i < NTHREADS; i++)  /* Create worker threads */
+        Pthread_create(&tid, NULL, thread, NULL);
+
     while (1) {
         clientlen = sizeof(clientaddr);
         connfd = Accept(listenfd, (SA *) &clientaddr, &clientlen);
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
-        doit(connfd);
-        Close(connfd);
+        sbuf_insert(&sbuf, connfd); /* Insert connfd in buffer */
     }
 }
 
@@ -159,6 +172,18 @@ void build_requesthdrs(rio_t *rio_client, uri_t *uri_info, char *requesthdrs) {
                 user_agent_hdr,
                 other_hdrs,
                 eof_hdr);
+    }
+}
+
+/*
+ * thread - a thread to server the client
+ */
+void *thread(void *vargp) {
+    Pthread_detach(pthread_self());
+    while (1) {
+        int connfd = sbuf_remove(&sbuf);    /* Remove connfd from buffer */
+        doit(connfd);                       /* Service client */
+        Close(connfd);
     }
 }
 
