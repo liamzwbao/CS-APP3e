@@ -1,9 +1,6 @@
 #include "csapp.h"
 #include "sbuf.h"
-
-/* Recommended max cache and object sizes */
-#define MAX_CACHE_SIZE 1049000
-#define MAX_OBJECT_SIZE 102400
+#include "cache.h"
 
 /* Number of threads and size of shared buffer */
 #define NTHREADS 4
@@ -29,6 +26,8 @@ void sigpipe_handler(int sig);
 
 sbuf_t sbuf;    /* Shared buffer of connected descriptors */
 
+cache_t cache;  /* Cache of web objects */
+
 int main(int argc, char **argv) {
     int listenfd, connfd;
     char hostname[MAXLINE], port[MAXLINE];
@@ -44,6 +43,8 @@ int main(int argc, char **argv) {
 
     Signal(SIGPIPE, sigpipe_handler);
     listenfd = Open_listenfd(argv[1]);
+
+    cache_init(&cache);
 
     sbuf_init(&sbuf, SBUFSIZE);
     for (int i = 0; i < NTHREADS; i++)  /* Create worker threads */
@@ -68,6 +69,10 @@ void doit(int fd) {
     uri_t *uri_info;
     int serverfd;
     size_t n;
+    block_t *block;
+    char key[MAXLINE];
+    char obj[MAX_OBJECT_SIZE];
+    int obj_size;
 
     /* Read request line and headers */
     Rio_readinitb(&rio_client, fd);
@@ -77,6 +82,14 @@ void doit(int fd) {
     if (strcasecmp(method, "GET")) {
         clienterror(fd, method, "501", "Not Implemented",
                     "Tiny does not implement this method");
+        return;
+    }
+
+    strcpy(key, uri);
+    if ((block = cache_read(&cache, key))) {
+        lock(block);
+        Rio_writen(fd, block->val, strlen(block->val));
+        unlock(block);
         return;
     }
 
@@ -90,11 +103,18 @@ void doit(int fd) {
     Rio_readinitb(&rio_server, serverfd);
     Rio_writen(serverfd, requesthdrs, strlen(requesthdrs));
 
+    obj_size = 0;
     while ((n = Rio_readlineb(&rio_server, buf, MAXLINE)) != 0) {
+        obj_size += n;
+        if (obj_size < MAX_OBJECT_SIZE)
+            strcat(obj, buf);
         printf("proxy received %d bytes, sending to client\n", (int) n);
         Rio_writen(fd, buf, n);
     }
     Close(serverfd);
+
+    if (obj_size < MAX_OBJECT_SIZE)
+        cache_write(&cache, key, obj);
 }
 
 /*
